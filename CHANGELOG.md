@@ -8,6 +8,14 @@ separately: tags `vX.Y.Z` for `github.com/slavabobik/fasttext`, and
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Load` from a reader of unknown size** (an HTTP body, a gzip stream) no longer trusts the sizes in the file ([#6](https://github.com/slavabobik/fasttext/issues/6), reported by Ian).
+  - Before, a 129-byte file claiming 2^34 rows made `Load` allocate 64 GiB. On a machine with less memory, that killed the process with an out-of-memory error that `recover` can't catch.
+  - Now matrices, quantized codes, dictionary entries and the pruned index grow with the bytes that arrive.
+  - `Open`, `bytes.Reader` and `lid176` were not affected.
+  - `FuzzLoad` now covers this path.
+
 ### Added
 
 - **Accuracy per language:** `TestTatoeba` scores lid.176.bin and lid.176.ftz on 182,958 Tatoeba sentences in 155 languages. It fails if any count changes. The results are in `docs/LANGUAGES.md`.

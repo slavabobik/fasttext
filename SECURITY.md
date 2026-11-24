@@ -9,7 +9,8 @@ Security fixes go into the latest minor release of each module.
 `fasttext.Open` and `fasttext.Load` parse a binary format. They are written to fail safely on truncated or damaged files:
 
 - Sizes are checked against the length of the input before allocating.
-- `TestDamagedModel` loads truncated files and files with random bytes changed, and predicts with whatever loads.
+- When the input has no known length (`Load` from a stream), memory grows with the bytes that arrive, not with the sizes the file claims.
+- `TestDamagedModel` loads truncated files and files with random bytes changed, and predicts with whatever loads. `TestLoadClaimsTooMuch` loads short files that claim tens of gigabytes. `FuzzLoad` loads mutated files with and without a known length.
 
 A damaged model may still load and give meaningless predictions. If you load models from sources you don't control, check their SHA-256 first.
 

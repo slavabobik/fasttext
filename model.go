@@ -113,6 +113,10 @@ func Open(path string) (*Model, error) {
 // Sizes found in the file are checked against the length of the input when r
 // can tell it (a file, a bytes.Reader, anything with Len or Seek), so a
 // truncated or damaged file gives an error instead of a huge allocation.
+// When r cannot tell its length (an HTTP body, a gzip stream), memory grows
+// with the bytes that arrive instead: a file that claims more than it holds
+// fails after allocating a few times what it held. Loading a large model this
+// way briefly takes up to twice its size, while the last matrix grows.
 func Load(r io.Reader) (*Model, error) {
 	size := int64(-1)
 	switch l := r.(type) {
