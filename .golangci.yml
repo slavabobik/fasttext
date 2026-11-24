@@ -41,6 +41,9 @@ linters:
       # Test and tool code may ignore results it does not use.
       - path: (_test\.go|cmd/|accuracy/)
         linters: [errcheck]
+      # Sentences in 79 languages, not English.
+      - path: langid/samples_test\.go
+        linters: [misspell]
 
 formatters:
   enable:

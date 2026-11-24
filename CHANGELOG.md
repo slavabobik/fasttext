@@ -8,6 +8,16 @@ separately: tags `vX.Y.Z` for `github.com/slavabobik/fasttext`, and
 
 ## [Unreleased]
 
+### Added
+
+- **Accuracy per language:** `TestTatoeba` scores lid.176.bin and lid.176.ftz on 182,958 Tatoeba sentences in 155 languages. It fails if any count changes. The results are in `docs/LANGUAGES.md`.
+- **Wider language test:** `TestDetect` now covers 79 languages in 27 writing systems, up from 16 languages. It runs in every CI job.
+- **New benchmarks:**
+  - by writing system (`BenchmarkDetectScript`);
+  - by text length, 16 bytes to 64 KB (`BenchmarkDetectLength`), also measured against C++ fastText by `accuracy/bench.sh`;
+  - by k (`BenchmarkAppendDetectTop`);
+  - parallel detection with the embedded model (`lid176.BenchmarkDetectParallel`).
+
 ## [0.1.0] - 2026-11-24
 
 First release.

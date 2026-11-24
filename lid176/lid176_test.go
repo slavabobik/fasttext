@@ -110,3 +110,18 @@ func BenchmarkDetect(b *testing.B) {
 		d.Detect(text)
 	}
 }
+
+func BenchmarkDetectParallel(b *testing.B) {
+	d, err := lid176.Detector()
+	if err != nil {
+		b.Fatal(err)
+	}
+	text := "Where is my order? It was supposed to arrive yesterday."
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			d.Detect(text)
+		}
+	})
+}

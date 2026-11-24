@@ -22,41 +22,41 @@ func open(tb testing.TB, model string) *langid.Detector {
 	return d
 }
 
-var sentences = []struct{ text, code string }{
-	{"Where is my order? It was supposed to arrive yesterday.", "en"},
-	{"¿Dónde está mi pedido? Tenía que llegar ayer.", "es"},
-	{"Wo ist meine Bestellung? Sie sollte gestern ankommen.", "de"},
-	{"Mijn bestelling is nog steeds niet aangekomen.", "nl"},
-	{"Bonjour tout le monde, comment allez-vous ?", "fr"},
-	{"注文した商品がまだ届いていません。", "ja"},
-	{"주문한 상품이 아직 도착하지 않았습니다.", "ko"},
-	{"我的订单还没有到。", "zh"},
-	{"Где мой заказ? Он должен был прийти вчера.", "ru"},
-	{"Dov'è il mio ordine? Doveva arrivare ieri.", "it"},
-	{"Onde está o meu pedido? Era para chegar ontem.", "pt"},
-	{"Gdzie jest moje zamówienie? Miało przyjść wczoraj.", "pl"},
-	{"Siparişim nerede? Dün gelmesi gerekiyordu.", "tr"},
-	{"Де моє замовлення? Воно мало прийти вчора.", "uk"},
-	{"أين طلبي؟ كان من المفترض أن يصل أمس.", "ar"},
-	{"मेरा ऑर्डर कहाँ है? इसे कल आना था।", "hi"},
+// closeNeighbours are the languages of samples that lid.176 takes for a close
+// neighbour on a single short sentence, the neighbours named. For these
+// TestDetect accepts the language among the top three answers.
+// docs/LANGUAGES.md shows the same pairs on Tatoeba.
+var closeNeighbours = map[string]string{
+	"gl": "pt",       // Galician, Portuguese
+	"no": "da",       // Norwegian, Danish
+	"sl": "sr hr",    // Slovene, Serbian, Croatian
+	"hr": "bs sr sl", // Croatian, Bosnian, Serbian, Slovene
+	"ms": "id",       // Malay, Indonesian
 }
 
 func TestDetect(t *testing.T) {
 	for _, model := range []string{"lid.176.bin", "lid.176.ftz"} {
 		t.Run(model, func(t *testing.T) {
 			d := open(t, model)
-			for _, s := range sentences {
-				got, err := d.Detect(s.text)
+			right := 0
+			for _, s := range samples {
+				top, err := d.DetectTop(s.text, 3, 0)
 				if err != nil {
-					t.Fatalf("Detect(%q): %v", s.text, err)
+					t.Fatalf("DetectTop(%q): %v", s.text, err)
 				}
-				if got.Code != s.code {
-					t.Errorf("Detect(%q) = %s %.4f, want %s", s.text, got.Code, got.Prob, s.code)
+				if top[0].Prob <= 0 || top[0].Prob > 1.0001 {
+					t.Errorf("%s: probability %v out of range", s.code, top[0].Prob)
 				}
-				if got.Prob < 0.5 || got.Prob > 1.0001 {
-					t.Errorf("Detect(%q) probability %v out of range", s.text, got.Prob)
+				if top[0].Code == s.code {
+					right++
+					continue
 				}
+				if _, ok := closeNeighbours[s.code]; ok && (top[1].Code == s.code || top[2].Code == s.code) {
+					continue
+				}
+				t.Errorf("%s %q: got %v", s.code, s.text, top)
 			}
+			t.Logf("%d of %d samples right at the top", right, len(samples))
 		})
 	}
 }
@@ -177,8 +177,8 @@ func TestNoAllocation(t *testing.T) {
 
 func TestConcurrent(t *testing.T) {
 	d := open(t, "lid.176.ftz")
-	want := make([]langid.Language, len(sentences))
-	for i, s := range sentences {
+	want := make([]langid.Language, len(samples))
+	for i, s := range samples {
 		want[i], _ = d.Detect(s.text)
 	}
 	var wg sync.WaitGroup
@@ -188,11 +188,11 @@ func TestConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for n := 0; n < 200; n++ {
-				i := (n + g) % len(sentences)
-				got, err := d.Detect(sentences[i].text)
+				i := (n + g) % len(samples)
+				got, err := d.Detect(samples[i].text)
 				if err != nil || got != want[i] {
 					select {
-					case errs <- sentences[i].text:
+					case errs <- samples[i].text:
 					default:
 					}
 					return

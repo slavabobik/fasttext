@@ -7,7 +7,8 @@
 # -funroll-loops -march=native), the fastest build, and the Go port's ftbench,
 # plain and with GOEXPERIMENT=simd. Each program loads a model and predicts
 # the texts of a corpus in a loop: one text per call, as fastText's Python
-# package does. Prints a Markdown table per corpus; the raw numbers are in
+# package does. Prints a Markdown table per corpus, then one for texts of 16
+# bytes to 64 KB (bench/lengths.sh); the raw numbers are in
 # build/bench/bench.tsv.
 #
 # Environment: MODELS restricts the models (paths relative to accuracy/),
@@ -28,3 +29,7 @@ fi
 # shellcheck disable=SC2086
 bench/run.sh "$secs" "$threads" $tools > "$out/bench.tsv"
 python3 bench/summarize.py --brief "$out/bench.tsv"
+echo "## lid.176.bin by text length, k = 1, one thread"
+echo
+# shellcheck disable=SC2086
+bench/lengths.sh "$secs" $tools

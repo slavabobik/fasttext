@@ -110,6 +110,44 @@ Loading and memory are about the same as fastText's:
   - The SIMD build is faster than fastText there too.
 - **Threads.** Both programs scale with the number of CPUs.
 
+## Language detection: writing systems, text length, top-k
+
+These are Go benchmarks of package `langid` with `lid.176.bin`, the model that package `lid176` embeds. They ran on an Apple M4 Pro, plain Go, one thread unless noted, and show the median of 3 runs of 1 second. Every call allocates nothing.
+
+**By text length, against fastText.** One text cut from the paragraphs of 144 languages, k = 1. `accuracy/bench.sh` prints this table too, so the [Accuracy workflow](../.github/workflows/accuracy.yml) measures it on Linux x86-64 and arm64. Microseconds per text; brackets: fastText's time divided by the port's.
+
+| Bytes | fastText | Go | Go simd |
+|---:|---:|---:|---:|
+| 16 | 0.85 | 0.43 (2.0×) | 0.39 (2.2×) |
+| 64 | 1.77 | 0.98 (1.8×) | 0.80 (2.2×) |
+| 256 | 6.02 | 3.78 (1.6×) | 3.01 (2.0×) |
+| 1,024 | 24.4 | 14.9 (1.6×) | 12.1 (2.0×) |
+| 4,096 | 92.0 | 55.9 (1.6×) | 44.1 (2.1×) |
+| 16,384 | 396 | 259 (1.5×) | 199 (2.0×) |
+| 65,536 | 1,711 | 1,135 (1.5×) | 871 (2.0×) |
+
+The time grows in proportion to the length: about 60 to 70 MB/s for the port once a text is over 64 bytes. fastText reads the whole text, so if speed matters for long documents, pass the first few kilobytes.
+
+**By writing system.** The sentences of `langid/samples_test.go`, mostly the same request (a table for two tonight) in 79 languages. lid.176 looks up every word and its character n-grams of 2 to 4 characters, and hashes each n-gram byte by byte. So the time follows the number of characters, and to a lesser degree the number of bytes: scripts outside Latin take 2 or 3 bytes per character in UTF-8. Chinese, Japanese and Korean are the fastest because they say the same thing in the fewest characters.
+
+| Writing system | Languages | Bytes per sentence | µs per sentence |
+|---|---|---:|---:|
+| Japanese, Han (Chinese), Hangul (Korean) | ja, zh, ko | 42 to 67 | 0.7 to 0.8 |
+| Latin | 39 languages | 67 | 1.5 |
+| Cyrillic | 8 languages | 105 | 1.5 |
+| Greek, Hebrew, Arabic, Thaana, Ethiopic | el; he, yi; ar, fa, ur, ug; dv; am | 100 to 119 | 1.3 to 1.6 |
+| Armenian, Georgian | hy; ka | 136 to 199 | 1.6 to 1.9 |
+| Devanagari, Bengali, Gurmukhi, Gujarati, Odia | hi, mr, ne; bn; pa; gu; or | 154 to 209 | 1.5 to 2.0 |
+| Tamil, Telugu, Kannada, Malayalam, Sinhala | ta; te; kn; ml; si | 199 to 247 | 1.8 to 2.2 |
+| Thai, Lao, Khmer, Myanmar | th; lo; km; my | 138 to 217 | 1.4 to 2.3 |
+| Tibetan | bo | 255 | 2.4 |
+
+**Top k.** `AppendDetect` on the 2,012 Tatoeba sentences of `tatoeba-golden.txt`: 1.2 µs for the top language, 2.6 µs for the top 5, 5.7 µs for all 176. A larger k makes the hierarchical softmax visit more of its tree.
+
+**All cores.** `Detect` from 14 goroutines on one shared detector: 0.11 µs per text on average, about 9 million texts per second. The detector needs no lock; each call borrows a scratch buffer from a `sync.Pool`.
+
+**Loading.** `lid176.Model()` decodes the embedded 131 MB model in 7.6 ms and allocates 150 MB. `lid176.Detect` does that once per process.
+
 ## How far to trust the numbers
 
 - **One run of 3 seconds per number,** on cloud machines shared with other workloads. fastText's own times moved by up to 13% between two rounds, so differences below about 15% mean nothing. The OpenLID-v2 paragraph row on the Xeon is the least reliable.
@@ -131,5 +169,6 @@ Go benchmarks only:
 
 ```sh
 make bench                                    # every Benchmark* in both modules
+go test -run '^$' -bench 'DetectScript|DetectLength|AppendDetectTop' ./langid   # the tables above
 go test -run '^$' -bench 'Predict$' -count 6 . | benchstat -   # with golang.org/x/perf/cmd/benchstat
 ```

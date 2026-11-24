@@ -195,6 +195,21 @@ make golden           # all Go tests with every fixture
 make accuracy-docker  # C++ fastText vs Go on the full corpora (Docker)
 ```
 
+### How well does lid.176 detect languages?
+
+Bit-identical means the port is exactly as accurate as fastText, no more and no less. [docs/LANGUAGES.md](docs/LANGUAGES.md) has the numbers per language, from `go test ./langid -run TestTatoeba`:
+
+| Tatoeba sentences, 155 languages | lid.176.bin | lid.176.ftz |
+| --- | ---: | ---: |
+| All 182,958 | 97.3% | 95.6% |
+| 1 to 20 characters | 93.2% | 89.0% |
+| 41 to 80 characters | 98.8% | 98.1% |
+
+- **Most errors are between close neighbours:** Bosnian, Croatian and Serbian; Danish and Norwegian; Indonesian and Malay; Galician and Portuguese; Mandarin and Cantonese.
+- **Some smaller languages are much weaker.** Norwegian Nynorsk, Ido, Interlingue and Occitan are below 50%. The table lists each language.
+- **The numbers are optimistic.** fastText trained lid.176 partly on Tatoeba.
+- **A second test runs in every CI job.** It holds hand-written sentences in 79 languages and 27 writing systems ([`langid/samples_test.go`](langid/samples_test.go)).
+
 ## Performance
 
 Microseconds per text, one thread, k = 1, sentences of 41 bytes on average. fastText's C++ library is built with its own release flags (`-O3 -march=native`). Brackets: how many times faster than fastText.
@@ -215,7 +230,7 @@ Microseconds per text, one thread, k = 1, sentences of 41 bytes on average. fast
 
 **SIMD build (optional).** With Go 1.27 or later, build with `GOEXPERIMENT=simd` to use NEON on arm64 and AVX2 or AVX-512 on amd64. It needs no assembly and no cgo, and the results are the same bits. It matters for models with large vectors (GlotLID, OpenLID); for `lid.176` plain Go is already as fast.
 
-All machines, models and paragraph-length texts: [docs/BENCHMARKS.md](docs/BENCHMARKS.md). To measure on your own machine: `make bench` (Go only), or `accuracy/bench.sh` (C++ against Go).
+All machines, models and paragraph-length texts, plus timings by text length (16 bytes to 64 KB, against fastText) and by writing system: [docs/BENCHMARKS.md](docs/BENCHMARKS.md). To measure on your own machine: `make bench` (Go only), or `accuracy/bench.sh` (C++ against Go).
 
 ## Behaviour notes
 
@@ -281,7 +296,7 @@ To cite this package, see [CITATION.cff](CITATION.cff).
 | [`lid176/`](lid176) | Separate module with the embedded `lid.176.bin` and the `lid` CLI, so the core module stays small |
 | [`cmd/ftdump`](cmd/ftdump), [`cmd/ftbench`](cmd/ftbench) | Dump and timing tools used for the comparison with C++ |
 | [`accuracy/`](accuracy) | The reference harness: C++ tools, Dockerfile, models, corpora, golden dumps, results |
-| [`docs/`](docs) | [Verification](docs/VERIFICATION.md) and [benchmarks](docs/BENCHMARKS.md) |
+| [`docs/`](docs) | [Verification](docs/VERIFICATION.md), [accuracy per language](docs/LANGUAGES.md) and [benchmarks](docs/BENCHMARKS.md) |
 
 ## Contributing
 
