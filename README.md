@@ -53,9 +53,6 @@ go install github.com/slavabobik/fasttext/lid176/cmd/lid@latest
 
 Go 1.24 or later is required.
 
-> **Repository is private?** Then tell Go not to use the public proxy for it, and make sure `git` can authenticate to GitHub:
-> `go env -w GOPRIVATE=github.com/slavabobik/*`
-
 ## Quick start
 
 ### Detect a language with the embedded model
