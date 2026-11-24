@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # The Go modules have no dependencies; keep the workflow actions current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,21 @@
+# Normalise line endings of source files, but never touch test data: the
+# golden tests compare bytes.
+* text=auto eol=lf
+accuracy/** -text
+
+# Large test fixtures live in Git LFS. Nothing under lid176/ may be stored in
+# LFS: Go embeds those files, and the Go module proxy does not fetch LFS
+# objects.
+accuracy/models/t-*.bin       filter=lfs diff=lfs merge=lfs -text
+accuracy/corpus/tatoeba-test.txt  filter=lfs diff=lfs merge=lfs -text
+accuracy/corpus/tatoeba-test.tsv  filter=lfs diff=lfs merge=lfs -text
+accuracy/corpus/tatoeba-train.tsv filter=lfs diff=lfs merge=lfs -text
+
+# Binary fixtures.
+*.ftz      binary
+*.dump.gz  binary
+lid176/model/* binary
+
+# Keep generated and reference material out of language statistics.
+accuracy/** linguist-vendored
+libm_tables.go linguist-generated

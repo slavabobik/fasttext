@@ -1,0 +1,6 @@
+glotlid.bin	edge-cases	1,5,-1	e32f488202a1d5140aa399da46532ec2207d514d2b7c0ae5b2a07dccd0a51f11
+glotlid.bin	random	1,5,-1	c2ec7d5ffd1d732a9e7cac1478bc0efdff27e9709cd177d8a31b78888e407a79
+glotlid.bin	tatoeba-test	1,5	3a6386179490de5a756602735b5f97ce5fb9e596499f43854d1b49bd7dc0feb0
+openlid-v2.bin	edge-cases	1,5,-1	65fe7965bb9dc6c7040a91a9cdce9e76f6cd7c524d9265dbdc8fc85058c1dd3b
+openlid-v2.bin	random	1,5,-1	fc72ade1eba1e263ff5ee5db29cd0b3714e76cb7ae2ef2d0ba6962375d053910
+openlid-v2.bin	tatoeba-test	1,5	1e593d4d0ed798989dcc0ecb2771e670f6e694f0fd1d361333498b1896e56610

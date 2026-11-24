@@ -1,0 +1,195 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The library never needs cgo. Every job builds without it unless it says
+  # otherwise.
+  CGO_ENABLED: "0"
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, Go ${{ matrix.go }}${{ matrix.simd && ', simd' || '' }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        go: [stable]
+        simd: [false, true]
+        include:
+          # The oldest supported Go version, plain build.
+          - os: ubuntu-latest
+            go: "1.24.x"
+            simd: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Workspace
+        run: go work init . ./lid176
+      - name: Vet
+        run: go vet ./... ./lid176/...
+      - name: Test
+        shell: bash
+        run: |
+          if [ "${{ matrix.simd }}" = true ]; then export GOEXPERIMENT=simd; fi
+          go test -short -count=1 ./... ./lid176/...
+
+  golden:
+    # Every test with every fixture: the golden dumps of all 11 models, the
+    # exhaustive check of expf/exp/log against glibc on all 2^32 floats, the
+    # heap tie order. Needs the Git LFS files.
+    name: golden (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v5
+      - name: LFS object list
+        run: git lfs ls-files --long | cut -d' ' -f1 | sort > .lfs-assets-id
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: lfs-
+      - name: Fetch LFS files
+        run: git lfs pull
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Assemble lid.176.bin
+        run: make testdata
+      - name: Test (plain Go)
+        run: go work init . ./lid176 && go test -count=1 -v ./... ./lid176/... 2>&1 | tee test.log | grep -E '^(--- |ok |FAIL|PASS)' ; test "${PIPESTATUS[0]}" -eq 0
+        shell: bash
+      - name: Test (GOEXPERIMENT=simd)
+        run: GOEXPERIMENT=simd go test -count=1 ./... ./lid176/...
+      - name: No skipped fixtures
+        shell: bash
+        run: |
+          if grep -E -- '--- SKIP' test.log; then
+            echo "::error::tests were skipped: fixtures missing"
+            exit 1
+          fi
+
+  race:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "1" # the race detector needs it; the library does not
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go work init . ./lid176
+      - run: go test -race -short -count=1 ./... ./lid176/...
+
+  no-cgo:
+    # Proves the "no cgo" claim: every package cross-compiles with
+    # CGO_ENABLED=0 to platforms without a C toolchain, no package has cgo
+    # files, and the CLI runs in an empty container image.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Cross-compile
+        run: make nocgo
+      - name: Static binary in a scratch image
+        run: |
+          go build -trimpath -ldflags='-s -w' -o lid ./lid176/cmd/lid
+          file lid
+          printf 'FROM scratch\nCOPY lid /lid\nENTRYPOINT ["/lid"]\n' > Dockerfile.scratch
+          docker build -q -f Dockerfile.scratch -t lid-scratch .
+          got="$(echo 'Bonjour tout le monde' | docker run --rm -i lid-scratch)"
+          echo "$got"
+          case "$got" in fr*) ;; *) echo "::error::unexpected output"; exit 1 ;; esac
+
+  big-endian:
+    # s390x is big-endian: runs the tests under QEMU to check the model reader
+    # and the hashes on a byte order the main platforms do not have.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Install QEMU
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Build test binaries
+        run: |
+          GOARCH=s390x go test -c -o fasttext.test .
+          GOARCH=s390x go test -c -o langid/langid.test ./langid
+      - name: Test on s390x
+        run: |
+          qemu-s390x-static ./fasttext.test -test.short -test.run 'Golden|Predict|ModelReader|Example|Damaged'
+          cd langid && qemu-s390x-static ./langid.test -test.short
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Workspace
+        run: go work init . ./lid176
+      - name: gofmt
+        run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+      - name: golangci-lint (lid176)
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: lid176
+      - name: govulncheck
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./... ./lid176/...
+
+  bench:
+    # Go benchmarks, informational. On pull requests the base branch is
+    # measured on the same machine and benchstat compares the two.
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Benchmarks
+        run: |
+          bench() { go test -run='^$' -bench='Predict$|PredictParagraph|Detect$' -benchmem -count=6 . ./langid | tee "$1"; }
+          bench /tmp/new.txt
+          if [ -n "${{ github.base_ref }}" ]; then
+            git checkout -q "origin/${{ github.base_ref }}"
+            bench /tmp/old.txt || true
+            git checkout -q -
+          fi
+          go install golang.org/x/perf/cmd/benchstat@latest
+          {
+            echo '## Benchmarks'
+            echo '```'
+            if [ -s /tmp/old.txt ]; then benchstat /tmp/old.txt /tmp/new.txt; else benchstat /tmp/new.txt; fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

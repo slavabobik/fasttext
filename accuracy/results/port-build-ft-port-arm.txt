@@ -1,0 +1,37 @@
+machine: aarch64, 0xd8e, 8 cpus
+glibc: ldd (Debian GLIBC 2.41-12+deb13u4) 2.41
+go: go version go1.27.1 linux/arm64
+
+In file included from /usr/include/c++/14/bits/stl_algo.h:61,
+                 from /usr/include/c++/14/algorithm:61,
+                 from /work/accuracy/refdump/../../references/fastText/src/utils.h:13,
+                 from /work/accuracy/refdump/../../references/fastText/src/meter.h:16,
+                 from /work/accuracy/refdump/../../references/fastText/src/meter.cc:9:
+/usr/include/c++/14/bits/stl_heap.h: In function 'void std::__adjust_heap(_RandomAccessIterator, _Distance, _Distance, _Tp, _Compare) [with _RandomAccessIterator = __gnu_cxx::__normal_iterator<pair<float, float>*, vector<pair<float, float> > >; _Distance = long int; _Tp = pair<float, float>; _Compare = __gnu_cxx::__ops::_Iter_less_iter]':
+/usr/include/c++/14/bits/stl_heap.h:224:5: note: parameter passing for argument of type 'std::pair<float, float>' when C++17 is enabled changed to match C++14 in GCC 10.1
+  224 |     __adjust_heap(_RandomAccessIterator __first, _Distance __holeIndex,
+      |     ^~~~~~~~~~~~~
+version: head
+variant: strict
+flags: -pthread -std=c++17 -w  -O2 -DNDEBUG -ffp-contract=off -fno-fast-math -static
+compiler: c++ (Debian 14.2.0-19) 14.2.0
+system: Linux 6.12.105+ aarch64
+libm calls: exp expf log logf 
+
+In file included from /usr/include/c++/14/bits/stl_algo.h:61,
+                 from /usr/include/c++/14/algorithm:61,
+                 from /work/accuracy/refdump/../../references/fastText/src/utils.h:13,
+                 from /work/accuracy/refdump/../../references/fastText/src/meter.h:16,
+                 from /work/accuracy/refdump/../../references/fastText/src/meter.cc:9:
+/usr/include/c++/14/bits/stl_heap.h: In function 'void std::__adjust_heap(_RandomAccessIterator, _Distance, _Distance, _Tp, _Compare) [with _RandomAccessIterator = __gnu_cxx::__normal_iterator<pair<float, float>*, vector<pair<float, float> > >; _Distance = long int; _Tp = pair<float, float>; _Compare = __gnu_cxx::__ops::_Iter_less_iter]':
+/usr/include/c++/14/bits/stl_heap.h:224:5: note: parameter passing for argument of type 'std::pair<float, float>' when C++17 is enabled changed to match C++14 in GCC 10.1
+  224 |     __adjust_heap(_RandomAccessIterator __first, _Distance __holeIndex,
+      |     ^~~~~~~~~~~~~
+version: head
+variant: shipped
+flags: -pthread -std=c++17 -w  -O3 -funroll-loops -DNDEBUG -march=native
+compiler: c++ (Debian 14.2.0-19) 14.2.0
+system: Linux 6.12.105+ aarch64
+libm calls: exp expf log logf 
+
+built: build: dumpcmp go go-simd head-shipped head-strict heapref libm-public  build/go: ftbench ftdump  build/go-simd: ftbench ftdump 

@@ -1,0 +1,3 @@
+build/
+# Assembled from ../lid176/model by "make testdata".
+models/lid.176.bin

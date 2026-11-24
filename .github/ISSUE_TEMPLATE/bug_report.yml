@@ -1,0 +1,33 @@
+name: Bug report
+description: A wrong prediction compared to fastText, a crash, or a build problem
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: |
+        The smallest program or command that shows it. For a result that
+        differs from fastText, give the model (name and SHA-256, or a link),
+        the text, k and threshold, and what fastText returns (with its version
+        and platform).
+      render: go
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Module version
+      placeholder: v0.1.0
+  - type: input
+    id: go
+    attributes:
+      label: Go version, OS and architecture
+      placeholder: go1.27.1 linux/amd64, GOEXPERIMENT=simd

@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below. If you use the lid.176
+  model, please also cite the fastText papers listed under references.
+title: "fasttext: fastText inference and language identification in pure Go"
+type: software
+authors:
+  - family-names: Bobik
+    given-names: Slava
+repository-code: "https://github.com/slavabobik/fasttext"
+license: MIT
+version: 0.1.0
+date-released: "2026-11-24"
+keywords:
+  - fasttext
+  - language-identification
+  - text-classification
+  - go
+references:
+  - type: conference-paper
+    title: Bag of Tricks for Efficient Text Classification
+    authors:
+      - family-names: Joulin
+        given-names: Armand
+      - family-names: Grave
+        given-names: Edouard
+      - family-names: Bojanowski
+        given-names: Piotr
+      - family-names: Mikolov
+        given-names: Tomas
+    year: 2017
+    conference:
+      name: "EACL 2017"
+    url: "https://arxiv.org/abs/1607.01759"
+  - type: article
+    title: "FastText.zip: Compressing text classification models"
+    authors:
+      - family-names: Joulin
+        given-names: Armand
+      - family-names: Grave
+        given-names: Edouard
+      - family-names: Bojanowski
+        given-names: Piotr
+      - family-names: Douze
+        given-names: Matthijs
+      - family-names: Jégou
+        given-names: Hervé
+      - family-names: Mikolov
+        given-names: Tomas
+    year: 2016
+    url: "https://arxiv.org/abs/1612.03651"

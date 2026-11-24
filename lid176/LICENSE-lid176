@@ -1,0 +1,26 @@
+The files in model/ are the three parts of lid.176.bin, the language
+identification model published by Facebook, Inc. at
+https://fasttext.cc/docs/en/language-identification.html
+
+    https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+    SHA-256 (all parts concatenated, in order):
+    7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e
+
+The model is distributed under the Creative Commons Attribution-Share-Alike
+License 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+
+The model is unchanged; it was only split into parts because GitHub does not
+accept files larger than 100 MB.
+
+The model is described in:
+
+  A. Joulin, E. Grave, P. Bojanowski, T. Mikolov,
+  Bag of Tricks for Efficient Text Classification, EACL 2017.
+  https://arxiv.org/abs/1607.01759
+
+  A. Joulin, E. Grave, P. Bojanowski, M. Douze, H. Jégou, T. Mikolov,
+  FastText.zip: Compressing text classification models, 2016.
+  https://arxiv.org/abs/1612.03651
+
+The Go code in this directory is under the MIT licence of the repository
+(../LICENSE).

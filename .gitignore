@@ -1,0 +1,14 @@
+# Go workspace: created by "make" (go work init . ./lid176).
+go.work
+go.work.sum
+
+# Build output.
+/build/
+*.test
+*.out
+/lid
+
+# Editors and OS.
+.idea/
+.vscode/
+.DS_Store

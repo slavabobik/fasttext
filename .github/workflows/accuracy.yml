@@ -1,0 +1,82 @@
+name: Accuracy vs C++ fastText
+
+# Builds fastText's C++ code (commit 1142dc4) in the reference environment and
+# checks that the Go port returns the same bits on every test model and
+# corpus: 11 models, 233,381 texts each, k of 1, 5 and all labels, plain Go
+# and SIMD. Then times both. See accuracy/verify.sh and docs/VERIFICATION.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bench_seconds:
+        description: Seconds per timing run
+        default: "1"
+  schedule:
+    - cron: "17 4 * * 1" # Mondays
+  push:
+    branches: [main]
+    paths:
+      - "*.go"
+      - "cmd/**"
+      - "internal/**"
+      - "accuracy/**"
+      - ".github/workflows/accuracy.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: same bits as C++ (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v5
+      - name: LFS object list
+        run: git lfs ls-files --long | cut -d' ' -f1 | sort > .lfs-assets-id
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: lfs-
+      - name: Fetch LFS files
+        run: git lfs pull
+      - name: Assemble lid.176.bin
+        run: make testdata
+      - name: Reference environment
+        run: docker build -t fasttext-reference accuracy/reference
+      - name: Compare with C++ fastText
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src fasttext-reference accuracy/verify.sh | tee verify.log
+          {
+            echo "## Go port vs C++ fastText ($(uname -m))"
+            echo '```'
+            cat verify.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Speed vs C++ fastText
+        run: |
+          secs="${{ github.event.inputs.bench_seconds || '1' }}"
+          docker run --rm -v "$PWD:/src" -w /src fasttext-reference accuracy/bench.sh "$secs" | tee bench.md
+          {
+            echo "## Speed, $(uname -m), $(nproc) CPUs (µs per text; shared runner, single runs)"
+            cat bench.md
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accuracy-${{ matrix.os }}
+          path: |
+            verify.log
+            bench.md
+            accuracy/build/verify/*.tsv
+            accuracy/build/verify/ref/BUILD
+            accuracy/build/bench/bench.tsv

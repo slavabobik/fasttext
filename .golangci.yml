@@ -1,0 +1,47 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errorlint
+    - gocritic
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+  settings:
+    errcheck:
+      # bufio.Writer keeps its first error and returns it from Flush, which
+      # is checked.
+      exclude-functions:
+        - (*bufio.Writer).Write
+        - (*bufio.Writer).WriteByte
+        - (*bufio.Writer).WriteString
+        - (*bufio.Writer).WriteRune
+    staticcheck:
+      checks:
+        - all
+        # Conditions are written as in fastText's C++ code, to ease comparison.
+        - -QF1001
+        - -ST1000
+        - -ST1003
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Test and tool code may ignore results it does not use.
+      - path: (_test\.go|cmd/|accuracy/)
+        linters: [errcheck]
+
+formatters:
+  enable:
+    - gofmt
