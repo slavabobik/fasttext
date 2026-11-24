@@ -34,14 +34,14 @@ jobs:
             go: "1.24.x"
             simd: false
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Workspace
-        run: go work init . ./lid176
+        run: go work init . ./lid176 ./accuracy
       - name: Vet
-        run: go vet ./... ./lid176/...
+        run: go vet ./... ./lid176/... ./accuracy/...
       - name: Test
         shell: bash
         run: |
@@ -59,23 +59,23 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: LFS object list
         run: git lfs ls-files --long | cut -d' ' -f1 | sort > .lfs-assets-id
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .git/lfs
           key: lfs-${{ hashFiles('.lfs-assets-id') }}
           restore-keys: lfs-
       - name: Fetch LFS files
         run: git lfs pull
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: Assemble lid.176.bin
         run: make testdata
       - name: Test (plain Go)
-        run: go work init . ./lid176 && go test -count=1 -v ./... ./lid176/... 2>&1 | tee test.log | grep -E '^(--- |ok |FAIL|PASS)' ; test "${PIPESTATUS[0]}" -eq 0
+        run: go work init . ./lid176 ./accuracy && go test -count=1 -v ./... ./lid176/... 2>&1 | tee test.log | grep -E '^(--- |ok |FAIL|PASS)' ; test "${PIPESTATUS[0]}" -eq 0
         shell: bash
       - name: Test (GOEXPERIMENT=simd)
         run: GOEXPERIMENT=simd go test -count=1 ./... ./lid176/...
@@ -92,11 +92,11 @@ jobs:
     env:
       CGO_ENABLED: "1" # the race detector needs it; the library does not
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
-      - run: go work init . ./lid176
+      - run: go work init . ./lid176 ./accuracy
       - run: go test -race -short -count=1 ./... ./lid176/...
 
   no-cgo:
@@ -105,8 +105,8 @@ jobs:
     # files, and the CLI runs in an empty container image.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: Cross-compile
@@ -126,38 +126,38 @@ jobs:
     # and the hashes on a byte order the main platforms do not have.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: Install QEMU
-        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+        run: sudo apt-get update && sudo apt-get install -y qemu-user
       - name: Build test binaries
         run: |
           GOARCH=s390x go test -c -o fasttext.test .
           GOARCH=s390x go test -c -o langid/langid.test ./langid
       - name: Test on s390x
         run: |
-          qemu-s390x-static ./fasttext.test -test.short -test.run 'Golden|Predict|ModelReader|Example|Damaged'
-          cd langid && qemu-s390x-static ./langid.test -test.short
+          qemu-s390x ./fasttext.test -test.short -test.run 'Golden|Predict|ModelReader|Example|Damaged'
+          cd langid && qemu-s390x ./langid.test -test.short
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: Workspace
-        run: go work init . ./lid176
+        run: go work init . ./lid176 ./accuracy
       - name: gofmt
         run: test -z "$(gofmt -l . | tee /dev/stderr)"
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
       - name: golangci-lint (lid176)
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           working-directory: lid176
@@ -171,10 +171,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - name: Benchmarks

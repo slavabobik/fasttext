@@ -17,7 +17,7 @@ help: ## list the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
 go.work:
-	$(GO) work init . ./lid176
+	$(GO) work init . ./lid176 ./accuracy
 
 test: go.work ## quick tests of both modules (-short)
 	$(GO) test -short ./... ./lid176/...
@@ -36,7 +36,7 @@ bench: go.work ## Go benchmarks (run "make testdata" first for every model)
 	$(GO) test -run='^$$' -bench=. -benchmem ./... ./lid176/...
 
 vet: go.work ## go vet and gofmt
-	$(GO) vet ./... ./lid176/...
+	$(GO) vet ./... ./lid176/... ./accuracy/...
 	@test -z "$$(gofmt -l . | tee /dev/stderr)"
 
 lint: vet ## golangci-lint and govulncheck

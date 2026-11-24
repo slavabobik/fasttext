@@ -47,7 +47,7 @@ TOOL=ftdump ./checksums.sh build/go | sort > build/checksums-go.tsv
 ./compare_checksums.sh results/checksums-ft-refdump-n4-head-strict.tsv build/checksums-go.tsv
 
 # Layer-by-layer comparison of two builds
-(cd .. && go build -o accuracy/build/dumpcmp ./accuracy/dumpcmp)
+(cd dumpcmp && go build -o ../build/dumpcmp .)
 ./compare_builds.sh build/ref build/other > build/compare.tsv
 python3 summarize.py build/compare.tsv
 ```

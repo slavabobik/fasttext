@@ -43,7 +43,7 @@ if [ ! -f models/lid.176.bin ]; then
   exit 1
 fi
 (cd models && sha256sum -c --quiet SHA256SUMS) || { echo "model checksums differ" >&2; exit 1; }
-(cd corpus && sha256sum -c --quiet SHA256SUMS) || { echo "corpus checksums differ" >&2; exit 1; }
+sha256sum -c --quiet corpus/SHA256SUMS || { echo "corpus checksums differ" >&2; exit 1; }
 
 echo "== 1. Build fastText (head, strict flags)"
 refdump/build.sh head strict "$out/ref" > /dev/null

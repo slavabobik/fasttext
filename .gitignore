@@ -1,4 +1,4 @@
-# Go workspace: created by "make" (go work init . ./lid176).
+# Go workspace: created by "make" (go work init . ./lid176 ./accuracy).
 go.work
 go.work.sum
 
