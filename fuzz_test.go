@@ -3,6 +3,7 @@ package fasttext_test
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -68,10 +69,15 @@ func FuzzPredict(f *testing.F) {
 	})
 }
 
-// FuzzLoad loads mutated model files. Loading may fail, and a model that
-// loads may predict anything, but nothing may panic or exhaust memory.
+// FuzzLoad loads mutated model files twice: from a reader that tells its
+// length and from one that does not, which takes the path of an HTTP body or
+// a gzip stream. Loading may fail, and a model that loads may predict
+// anything, but nothing may panic or exhaust memory, and the two loads must
+// agree. The seeds are whole model files, which the fuzzer is slow to
+// minimize: without -fuzzminimizetime 0 it stops for a minute after each new
+// input.
 //
-//	go test -run '^$' -fuzz FuzzLoad
+//	go test -run '^$' -fuzz FuzzLoad -fuzzminimizetime 0
 func FuzzLoad(f *testing.F) {
 	for _, name := range []string{"t-ova-d64.ftz", "t-softmax-d32.ftz"} {
 		data, err := os.ReadFile(testdata.Model(f, name))
@@ -82,11 +88,24 @@ func FuzzLoad(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		m, err := fasttext.Load(bytes.NewReader(data))
+		stream, streamErr := fasttext.Load(struct{ io.Reader }{bytes.NewReader(data)})
+		if (err == nil) != (streamErr == nil) {
+			t.Fatalf("known size: %v; unknown size: %v", err, streamErr)
+		}
 		if err != nil {
 			return
 		}
 		for _, text := range []string{"", "hello world", "Это предложение"} {
-			_, _ = m.Predict(text, 2, 0)
+			p, err := m.Predict(text, 2, 0)
+			q, streamErr := stream.Predict(text, 2, 0)
+			if (err == nil) != (streamErr == nil) || len(p) != len(q) {
+				t.Fatalf("%q: known size %v, %v; unknown size %v, %v", text, p, err, q, streamErr)
+			}
+			for i := range p {
+				if p[i] != q[i] && !(p[i].Label == q[i].Label && p[i].Prob != p[i].Prob && q[i].Prob != q[i].Prob) {
+					t.Fatalf("%q: known size %v; unknown size %v", text, p, q)
+				}
+			}
 		}
 	})
 }

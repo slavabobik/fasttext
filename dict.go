@@ -84,28 +84,35 @@ func (d *dictionary) load(r *reader, a *args) error {
 		return fmt.Errorf("fasttext: dictionary of %d entries does not fit in the input", size)
 	}
 
-	d.entries = make([]string, size)
-	d.counts = make([]int64, size)
-	d.types = make([]int8, size)
-	for i := range d.entries {
-		d.entries[i] = r.cstring()
-		d.counts[i] = r.int64()
-		d.types[i] = r.int8()
+	// When the input size is unknown, the slices grow with the entries that
+	// arrive instead of trusting size.
+	hint := r.capHint(int(size), 1<<16)
+	d.entries = make([]string, 0, hint)
+	d.counts = make([]int64, 0, hint)
+	d.types = make([]int8, 0, hint)
+	for i := int32(0); i < size; i++ {
+		entry := r.cstring()
+		count := r.int64()
+		typ := r.int8()
 		if r.err != nil {
 			return r.err
 		}
 		// fastText sorts the dictionary: words first, then labels.
 		want := int8(typeWord)
-		if int32(i) >= d.nwords {
+		if i >= d.nwords {
 			want = typeLabel
 		}
-		if d.types[i] != want {
-			return fmt.Errorf("fasttext: dictionary entry %d has type %d, want %d", i, d.types[i], want)
+		if typ != want {
+			return fmt.Errorf("fasttext: dictionary entry %d has type %d, want %d", i, typ, want)
 		}
+		d.entries = append(d.entries, entry)
+		d.counts = append(d.counts, count)
+		d.types = append(d.types, typ)
 	}
 
 	if d.pruneidxSize > 0 {
-		d.prune.init(int(d.pruneidxSize))
+		// The pairs are read before the table is sized, for the same reason.
+		pairs := make([][2]int32, 0, r.capHint(int(d.pruneidxSize), 1<<16))
 		for i := int64(0); i < d.pruneidxSize; i++ {
 			first := r.int32()
 			second := r.int32()
@@ -115,7 +122,11 @@ func (d *dictionary) load(r *reader, a *args) error {
 			if second < 0 {
 				return fmt.Errorf("fasttext: invalid pruned index entry %d: %d", first, second)
 			}
-			d.prune.put(first, second)
+			pairs = append(pairs, [2]int32{first, second})
+		}
+		d.prune.init(len(pairs))
+		for _, p := range pairs {
+			d.prune.put(p[0], p[1])
 		}
 	}
 
